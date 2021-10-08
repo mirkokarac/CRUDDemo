@@ -36,7 +36,7 @@ variables:
   workingDirectory: '$(System.DefaultWorkingDirectory)/$(functionAppName)'
 
   # Check if branch is main
-  isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]  
+  isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]  
 
 stages:
 - stage: Build
