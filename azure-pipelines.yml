@@ -4,20 +4,42 @@
 # https://docs.microsoft.com/en-us/azure/devops/pipelines/languages/dotnet-core
 
 trigger:
-- master
+  branches:
+    include:
+    - master
+    - releases/*
+    - feature/*
+    
+pr:
+  branches:
+    include:
+    - master
+    - releases/*
+    - feature/*    
+
+  # see https://docs.microsoft.com/en-us/azure/devops/pipelines/repos/github?view=azure-devops&tabs=yaml#ci-triggers on how to add exclude and paths
 
 variables:
   # Azure Resource Manager connection created during pipeline creation
   azureSubscription: 'ff1866f0-cd5e-4c01-8a13-27f43d0dfaa5'
 
   # Function app name
-  functionAppName: 'CRUDDemom'
+  functionAppName: 'FunctionName'
 
   # Agent VM image name
   vmImageName: 'vs2017-win2016'
 
+  # Environment name
+  environment: 'development'
+
   # Working Directory
-  workingDirectory: '$(System.DefaultWorkingDirectory)/CRUDDemo'
+  workingDirectory: '$(System.DefaultWorkingDirectory)/FunctionName'
+
+  # Check if branch is main
+  isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]  
+
+  packages:
+  - 'path/to/package1' # add as many as project requires  
 
 stages:
 - stage: Build
@@ -36,29 +58,89 @@ stages:
         command: 'build'
         projects: |
           $(workingDirectory)/*.csproj
-        arguments: --output $(System.DefaultWorkingDirectory)/publish_output --configuration Release
 
-    - task: ArchiveFiles@2
-      displayName: 'Archive files'
+- stage: Test
+  displayName: Test stage
+
+  jobs:
+  - job: Test
+    displayName: Test
+    pool:
+      vmImage: $(vmImageName)
+
+    steps:
+    - task: DotNetCoreCLI@2
+      displayName: Test
       inputs:
-        rootFolderOrFile: '$(System.DefaultWorkingDirectory)/publish_output'
-        includeRootFolder: false
-        archiveType: zip
-        archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
-        replaceExistingArchive: true
+        command: 'test'
+        projects: |
+          $(workingDirectory)/*.csproj
+        arguments: --output $(workingDirectory)/test_output --configuration Test --collect "Code coverage"'
 
-    - publish: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
-      artifact: drop
+- stage: Pack
+  displayName: Pack stage
+  condition: and(succeeded(), eq(variables.isMain, 'true'))
+
+  jobs:
+  - job: Pack
+    displayName: Pack
+    pool:
+      vmImage: $(vmImageName)
+
+    steps:
+    - task: NuGetCommand@2
+      inputs:
+        command: 'pack'
+        packagesToPack: $(workingDirectory)/*.csproj
+        packDestination: '$(Build.ArtifactStagingDirectory)'
+
+- stage: Push
+  displayName: Push stage
+  condition: and(succeeded(), eq(variables.isMain, 'true'))
+
+  jobs:
+  - job: Push
+    displayName: Push
+    pool:
+      vmImage: $(vmImageName)
+
+    steps:
+    - task: NuGetCommand@2
+      inputs:
+        command: 'push'
+        packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg'
+        feedsToUse: 'config'
+        nugetConfigPath: '$(workingDirectory)/NuGet.config'
+
+- stage: Publish
+  displayName: Publish stage
+  condition: and(succeeded(), eq(variables.isMain, 'true'))
+
+  jobs:
+  - job: Publish
+    displayName: Publish
+    pool:
+      vmImage: $(vmImageName)
+
+    steps:
+    - task: DotNetCoreCLI@2
+      displayName: Publish
+      inputs:
+        command: 'publish'
+        projects: |
+          $(workingDirectory)/*.csproj
+        arguments: --output $(workingDirectory)/publish_output --configuration Release
 
 - stage: Deploy
   displayName: Deploy stage
   dependsOn: Build
-  condition: succeeded()
+  condition: and(succeeded(), eq(variables.isMain, 'true'))
 
   jobs:
   - deployment: Deploy
+    dependsOn: Build
     displayName: Deploy
-    environment: 'development'
+    environment: '$(environment)'
     pool:
       vmImage: $(vmImageName)
 
