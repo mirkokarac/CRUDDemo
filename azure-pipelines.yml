@@ -24,7 +24,7 @@ variables:
   azureSubscription: 'ff1866f0-cd5e-4c01-8a13-27f43d0dfaa5'
 
   # Function app name
-  functionAppName: 'FunctionName'
+  functionAppName: 'CRUDDemo'
 
   # Agent VM image name
   vmImageName: 'vs2017-win2016'
@@ -33,7 +33,7 @@ variables:
   environment: 'development'
 
   # Working Directory
-  workingDirectory: '$(System.DefaultWorkingDirectory)/FunctionName'
+  workingDirectory: '$(System.DefaultWorkingDirectory)/CRUDDemo'
 
   # Check if branch is main
   isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]  
