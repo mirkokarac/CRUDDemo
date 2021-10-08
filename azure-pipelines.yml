@@ -9,7 +9,7 @@ trigger:
     - master
     - releases/*
     - feature/*
-    
+
 pr:
   branches:
     include:
@@ -37,9 +37,6 @@ variables:
 
   # Check if branch is main
   isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]  
-
-  packages:
-  - 'path/to/package1' # add as many as project requires  
 
 stages:
 - stage: Build
