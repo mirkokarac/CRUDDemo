@@ -142,7 +142,7 @@ stages:
 
 - stage: Deploy
   displayName: Deploy stage
-  dependsOn: Build
+  dependsOn: Publish
   condition: and(succeeded(), eq(variables.isMain, 'true'))
 
   jobs:
